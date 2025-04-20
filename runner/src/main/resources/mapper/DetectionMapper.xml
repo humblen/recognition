@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jay.recognition.domain.detect.mapper.DetectMapper">
+
+    <!-- 插入语句 -->
+    <insert id="insertDetection" parameterType="com.jay.recognition.domain.detect.dao.Detection">
+        INSERT INTO detection (driver, status, location, detect_time)
+        VALUES (#{driver}, #{status}, #{location}, #{detectTime})
+    </insert>
+
+    <!-- 搜索语句 -->
+    <select id="searchDetections" parameterType="com.jay.recognition.domain.search.dto.SearchDTO" resultType="com.jay.recognition.domain.detect.dao.Detection">
+        SELECT * FROM detection
+        <where>
+            <if test="driver != null and driver != ''">
+                driver = #{driver}
+            </if>
+            <if test="location != null and location != ''">
+                AND location = #{location}
+            </if>
+            <if test="startTime != null and endTime != null">
+                AND detect_time BETWEEN #{startDate} AND #{endDate}
+            </if>
+        </where>
+    </select>
+</mapper>
