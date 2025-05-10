@@ -4,6 +4,11 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jay.recognition.domain.detect.mapper.DetectMapper">
 
+    <resultMap id="BaseResultMap" type="com.jay.recognition.domain.detect.dao.Detection" >
+        <id column="id" property="id" jdbcType="INTEGER" />
+        <result column="detect_time" property="detectTime" jdbcType="TIMESTAMP" />
+    </resultMap>
+
     <!-- 插入语句 -->
     <insert id="insertDetection" parameterType="com.jay.recognition.domain.detect.dao.Detection">
         INSERT INTO detection (driver, status, location, detect_time)
@@ -20,9 +25,13 @@
             <if test="location != null and location != ''">
                 AND location = #{location}
             </if>
-            <if test="startTime != null and endTime != null">
+            <if test="startDate != null and endDate != null">
                 AND detect_time BETWEEN #{startDate} AND #{endDate}
             </if>
         </where>
+        ORDER BY detect_time ASC
+    </select>
+    <select id="selectDates" resultType="com.jay.recognition.domain.detect.dao.Detection">
+        select * from detection
     </select>
 </mapper>

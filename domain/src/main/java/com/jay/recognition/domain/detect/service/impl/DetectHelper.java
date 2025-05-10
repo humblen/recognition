@@ -24,25 +24,26 @@ public class DetectHelper {
         MODEL_MAP.put("yolo11s", "yolos300epoch.pt");
         MODEL_MAP.put("yolo11m", "yolom300epoch.pt");
 
-        STATUS_2_CODE.put("DHelmetP1NoHelmetP2NoHelmet", 0);
-        STATUS_2_CODE.put("DNoHelmetP1NoHelmetP2NoHelmet", 1);
-        STATUS_2_CODE.put("DHelmetP0NoHelmetP1NoHelmet", 2);
-        STATUS_2_CODE.put("DNoHelmetP1NoHelmet", 3);
-        STATUS_2_CODE.put("DHelmetP0NoHelmet", 4);
-        STATUS_2_CODE.put("DNoHelmet", 5);
-        STATUS_2_CODE.put("DNoHelmetP1NoHelmetP2Helmet", 6);
-        STATUS_2_CODE.put("DHelmetP1NoHelmet", 7);
-        STATUS_2_CODE.put("DNoHelmetP0NoHelmetP1NoHelmet", 8);
-        STATUS_2_CODE.put("DNoHelmetP1Helmet", 9);
-        STATUS_2_CODE.put("DHelmetP0NoHelmetP1Helmet", 10);
-        STATUS_2_CODE.put("DNoHelmetP0NoHelmetP1NoHelmetP2NoHelmet", 11);
-        STATUS_2_CODE.put("DHelmetP1NoHelmetP2Helmet", 12);
-        STATUS_2_CODE.put("DNoHelmetP0NoHelmet", 13);
+        STATUS_2_CODE.put("S01", 0);
+        STATUS_2_CODE.put("S02", 1);
+        STATUS_2_CODE.put("S03", 2);
+        STATUS_2_CODE.put("S04", 3);
+        STATUS_2_CODE.put("S05", 4);
+        STATUS_2_CODE.put("S06", 5);
+        STATUS_2_CODE.put("S07", 6);
+        STATUS_2_CODE.put("S08", 7);
+        STATUS_2_CODE.put("S09", 8);
+        STATUS_2_CODE.put("S10", 9);
+        STATUS_2_CODE.put("S11", 10);
+        STATUS_2_CODE.put("S12", 11);
+        STATUS_2_CODE.put("S13", 12);
+        STATUS_2_CODE.put("S14", 13);
 
-        STATUS_2_CODE.put("DHelmet", 14);
-        STATUS_2_CODE.put("DHelmetP1Helmet", 15);
-        STATUS_2_CODE.put("DHelmetP0Helmet", 16);
-        STATUS_2_CODE.put("DHelmetP1HelmetP2Helmet", 17);
+        STATUS_2_CODE.put("S15", 14);
+        STATUS_2_CODE.put("S16", 15);
+        STATUS_2_CODE.put("S17", 16);
+        STATUS_2_CODE.put("S18", 17);
+
 
         DRIVER.put(0, "_ws8w04w22");
         DRIVER.put(1, "_k029x16n5");
@@ -585,11 +586,19 @@ public class DetectHelper {
         return STATUS_2_CODE.get(status) > 13;
     }
 
+    public static Boolean helmet(Integer status) {
+        return status > 13;
+    }
+
     public static Integer status2Code(String status) {
         return STATUS_2_CODE.getOrDefault(status, -1);
     }
 
     public static String code2Status(Integer code) {
         return CODE_2_STATUS.getOrDefault(code, "");
+    }
+
+    public static String getDriver(Integer code){
+        return DRIVER.getOrDefault(code, "");
     }
 }

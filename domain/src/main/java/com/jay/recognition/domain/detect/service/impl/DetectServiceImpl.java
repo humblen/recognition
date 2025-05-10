@@ -19,16 +19,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 import static com.jay.recognition.domain.detect.service.impl.DetectHelper.*;
+import static com.jay.recognition.domain.detect.service.impl.VideoHelper.AviToMp4;
+import static com.jay.recognition.domain.detect.service.impl.VideoHelper.convert;
 
 @Service
 @Log4j
@@ -41,8 +42,8 @@ public class DetectServiceImpl implements DetectService {
 
     @Autowired
     DetectMapper detectMapper;
-    private final Float TRACK_IOU = 0.8f;
-    private final Float TRACK_CONF = 0.8f;
+    private final Float TRACK_IOU = 0.2f;
+    private final Float TRACK_CONF = 0.2f;
 
     private final String TRACK_MODEL = "track_yolon300epoch.pt";
 
@@ -57,13 +58,13 @@ public class DetectServiceImpl implements DetectService {
         String savePath = saveImage(imageDTO.getImage());
         logger.info("--save successfully--");
         //检测结果保存的父目录路径，作为参数传给python
-        String resultParent = "E:\\Idea\\Ultimate_projects\\recognition\\runs\\detect\\";
+        String resultParent = "E:\\Idea\\Ultimate_projects\\recognition\\runs\\detect";
         ImageParamDTO imageParamDTO = new ImageParamDTO(savePath, imageDTO.getIOU(), imageDTO.getConfidence(), imageDTO.getModel(), resultParent);
         //结果图片的绝对路径
         String resultPath = detectImage(imageParamDTO);
         logger.info("--detect successfully--");
         Path parent = Paths.get(resultPath).getParent();
-        detectTrack(parent);
+//        detectTrack(parent);
         logger.info("--save info successfully--");
         ResponseEntity<Resource> resourceResponseEntity = buildResult(resultPath);
         return resourceResponseEntity;
@@ -72,20 +73,39 @@ public class DetectServiceImpl implements DetectService {
     private static ResponseEntity<Resource> buildResult(String resultPath) {
         logger.info("image Path:" + resultPath);
         File file = new File(resultPath);
+        logger.info("return file:" + file.getPath() + " " + file.length() + " " + file.exists() + " " + file.canRead());
         Resource resource = new FileSystemResource(file);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + file.getName());
         headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
         headers.add(HttpHeaders.PRAGMA, "no-cache");
         headers.add(HttpHeaders.EXPIRES, "0");
-        logger.info("headers: " + headers);
-
+        String fileExtension = getFileExtension(resultPath).toLowerCase();
+        MediaType contentType;
+        switch (fileExtension) {
+            case "jpg":
+            case "jpeg":
+            case "png":
+                contentType = MediaType.IMAGE_JPEG;
+                break;
+            default:
+                contentType = MediaType.parseMediaType("video/mp4");
+        }
         ResponseEntity<Resource> body = ResponseEntity.ok()
                 .headers(headers)
                 .contentLength(file.length())
-                .contentType(MediaType.IMAGE_JPEG)
+                .contentType(contentType)
                 .body(resource);
+        logger.info("body: " + body);
         return body;
+    }
+
+    private static String getFileExtension(String filePath) {
+        int lastIndex = filePath.lastIndexOf('.');
+        if (lastIndex != -1 && lastIndex < filePath.length() - 1) {
+            return filePath.substring(lastIndex + 1);
+        }
+        return "";
     }
 
     @Override
@@ -140,7 +160,21 @@ public class DetectServiceImpl implements DetectService {
             logger.info("python output: " + stdOutput);
             String[] split = imageParamDTO.getPath().split("\\\\");
             String fileName = split[split.length - 1];
-            return imageParamDTO.getSavePath() + fileName + "\\" + fileName;
+            String res = imageParamDTO.getSavePath() + "\\" + fileName + "\\" + fileName;
+//            if (res.toLowerCase().endsWith(".mp4")) {
+//                String videoPath = res.substring(0, res.length() - 4) + ".avi";
+//
+//                Path originalPath = Paths.get(videoPath);
+//                Path newPath = Paths.get(res);
+//                Files.move(originalPath, newPath, StandardCopyOption.REPLACE_EXISTING);
+//                System.out.println("文件重命名成功，新文件路径为: " + newPath);
+//            }
+
+            if (res.toLowerCase().endsWith(".mp4")) {
+                String source = res.substring(0, res.length() - 4) + ".avi";
+                convert(source, res, "mp4");
+            }
+            return res;
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -148,40 +182,70 @@ public class DetectServiceImpl implements DetectService {
 
     @Override
     public void saveDetectResult(Detection detection) {
+        logger.info("detectResult" + detection);
         detectMapper.insertDetection(detection);
     }
 
     @Override
     public void detectTrack(Path path) {
+        logger.info("--start to detect track--");
         Path crops = path.resolve("crops");
         // 检查 crops 文件夹是否存在
         if (Files.exists(crops) && Files.isDirectory(crops)) {
+            logger.info("crops : " + crops);
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(crops)) {
                 for (Path label : stream) {
                     if (Files.isDirectory(label)) {
+                        logger.info("label " + label);
                         DirectoryStream<Path> files = Files.newDirectoryStream(label);
                         for (Path file : files) {
-                            if (file.endsWith(".jpg")) {
+                            logger.info("file " + file);
+                            if (file.toString().endsWith(".jpg")) {
                                 ImageParamDTO imageParamDTO = new ImageParamDTO(file.toAbsolutePath().toString(),
                                         TRACK_IOU, TRACK_CONF,
                                         TRACK_MODEL,
                                         label.toAbsolutePath().toString());
                                 String result = detectImage(imageParamDTO);
-                                File labelDir = new File(new File(result).getParent() + "\\labels");
-                                List<Integer> list = null;
-                                File[] files1 = labelDir.listFiles();
-                                if (files1 != null) {
-                                    for (File listFile : files1) {
-                                        list = parseFirstNumbers(listFile);
-                                    }
-                                }
-                                Integer driver = (list == null || list.isEmpty()) ? -1 : list.getFirst();
-                                Detection detection = new Detection(DRIVER.get(driver),
-                                        status2Code(label.getFileName().toString()),
-                                        "",
-                                        LocalDateTime.now());
-                                saveDetectResult(detection);
+                                logger.info("track detect " + imageParamDTO);
+                                logger.info("track result " + result);
+//                                File labelDir = new File(new File(result).getParent() + "\\labels");
+//                                logger.info("labelDir" + labelDir);
+//                                List<Integer> list = null;
+//                                File[] files1 = labelDir.listFiles();
+//                                logger.info("txt files" + Arrays.toString(files1));
+//                                if (files1 != null) {
+//                                    for (File listFile : files1) {
+//                                        logger.info("one txt " + listFile);
+//                                        list = parseFirstNumbers(listFile);
+//                                    }
+//                                }
+//                                Integer driver = (list == null || list.isEmpty()) ? -1 : list.getFirst();
+//                                Detection detection = new Detection(getDriver(driver),
+//                                        status2Code(label.getFileName().toString()),
+//                                        "",
+//                                        LocalDateTime.now());
+//                                saveDetectResult(detection);
                             }
+                        }
+                        files = Files.newDirectoryStream(label);
+                        for (Path file : files) {
+                            if (!Files.isDirectory(file)) continue;
+                            Path newPath = file.resolve("labels");
+                            File[] allFiles = newPath.toFile().listFiles();
+                            List<Integer> list = null;
+                            if (allFiles != null) {
+                                for (File listFile : allFiles) {
+                                    logger.info("one txt" + listFile);
+                                    list = parseFirstNumbers(listFile);
+                                }
+                            }
+
+                            Integer driver = (list == null || list.isEmpty()) ? -1 : list.getFirst();
+                            Detection detection = new Detection(getDriver(driver),
+                                    status2Code(label.getFileName().toString()),
+                                    "",
+                                    new Timestamp(System.currentTimeMillis()));
+                            saveDetectResult(detection);
                         }
                     }
                 }
@@ -207,13 +271,14 @@ public class DetectServiceImpl implements DetectService {
         // 启动进程
         String command = PYTHON_INTERPRETER + " " + PYTHON_SCRIPT + " " + path +
                 " " + imageParamDTO.getIOU() + " " + imageParamDTO.getConfidence() +
-                " " + chooseModel(imageParamDTO.getModel() + " " + imageParamDTO.getSavePath());
+                " " + chooseModel(imageParamDTO.getModel()) + " " + imageParamDTO.getSavePath();
         logger.info("command:" + command);
         Process process = runtime.exec(command);
         return process;
     }
 
     public List<Integer> parseFirstNumbers(File file) {
+        logger.info("track txt file:  " + file);
         List<Integer> numbers = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
@@ -233,6 +298,7 @@ public class DetectServiceImpl implements DetectService {
         } catch (IOException e) {
             System.err.println("读取文件时出错: " + e.getMessage());
         }
+        logger.info("track number" + numbers);
         return numbers;
     }
 }

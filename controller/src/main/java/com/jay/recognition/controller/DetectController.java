@@ -32,15 +32,16 @@ public class DetectController {
             @RequestParam("model") String model) throws JsonProcessingException {
         ImageDTO imageDTO = new ImageDTO(image, iou, confidence, model);
         logger.info(imageDTO.toString());
+        logger.info("originName: " + imageDTO.getImage().getOriginalFilename());
         return detectService.detect(imageDTO);
     }
 
-    @PostMapping("/test")
-    public @ResponseBody String forTest() throws JsonProcessingException {
-        logger.info("test");
-        Result<String> test = Result.success("test");
-        ObjectMapper objectMapper = new ObjectMapper();
-        String s = objectMapper.writeValueAsString(test);
-        return s;
-    }
+//    @PostMapping("/test")
+//    public @ResponseBody String forTest() throws JsonProcessingException {
+//        logger.info("test");
+//        Result<String> test = Result.success("test");
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        String s = objectMapper.writeValueAsString(test);
+//        return s;
+//    }
 }

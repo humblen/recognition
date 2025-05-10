@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
 @AllArgsConstructor
@@ -15,9 +15,9 @@ public class Detection {
     private String driver;
     private Integer status;
     private String location;
-    private LocalDateTime detectTime;
+    private Date detectTime;
 
-    public Detection(String driver, Integer status, String location, LocalDateTime detectTime) {
+    public Detection(String driver, Integer status, String location, Date detectTime) {
         this.driver = driver;
         this.status = status;
         this.location = location;
